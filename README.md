@@ -5,6 +5,7 @@ A professional proxy checker, scraper, and connection tester tool with comprehen
 ## Features
 
 - **Proxy Checker**: Validate proxies from a list with detailed information
+- **Multi-Protocol Support**: Automatically detects and tests both HTTP and SOCKS5 proxies
 - **Proxy Scraper**: Automatically scrape proxies from public sources
 - **Connection Tester**: Test individual proxy connections
 - **Statistics**: Track your proxy checking history
@@ -37,7 +38,9 @@ python proxy_checker.py
 1. **Basic Proxy Checker**: Check proxies from `proxies.txt`
    - Place your proxies in `proxies.txt` (one per line)
    - Format: `ip:port` or `user:pass@ip:port`
+   - Automatically tests both HTTP and SOCKS5 protocols
    - Results are saved to `valid.txt` and `invalid.txt`
+   - Valid proxies show the protocol type (HTTP or SOCKS5) in the output
 
 2. **Proxy Scraper**: Scrape proxies from public sources
    - Automatically fetches proxies from multiple sources
@@ -82,6 +85,7 @@ You can modify these constants in `proxy_checker.py`:
 
 - Python 3.7+
 - requests library
+- PySocks library (for SOCKS5 support)
 
 ## License
 

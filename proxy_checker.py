@@ -6,6 +6,13 @@ import json
 from concurrent.futures import ThreadPoolExecutor
 from typing import Tuple, Optional, Dict, List
 
+try:
+    import socks
+    import socket
+    SOCKS5_AVAILABLE = True
+except ImportError:
+    SOCKS5_AVAILABLE = False
+
 GREEN = "\033[92m"
 RED = "\033[91m"
 CYAN = "\033[96m"
@@ -102,14 +109,15 @@ def extract_ip(proxy: str) -> str:
         return "0.0.0.0"
 
 def check_proxy(proxy_url: str) -> Tuple[str, bool, Optional[str], Optional[str], Optional[int]]:
-    proxies = {
+    start = time.time()
+    
+    http_proxies = {
         "http": f"http://{proxy_url}",
         "https": f"http://{proxy_url}",
     }
     
     try:
-        start = time.time()
-        response = requests.get(HTTPBIN_URL, proxies=proxies, timeout=DEFAULT_TIMEOUT)
+        response = requests.get(HTTPBIN_URL, proxies=http_proxies, timeout=DEFAULT_TIMEOUT)
         elapsed = int((time.time() - start) * 1000)
         
         if response.status_code == 200:
@@ -123,12 +131,41 @@ def check_proxy(proxy_url: str) -> Tuple[str, bool, Optional[str], Optional[str]
             loc = info.get("loc", "Unknown")
             asn = org.split()[0] if org != "Unknown" else "Unknown"
             
-            print(f"{GREEN}[\u2713] {proxy_url} | {proxy_type} | {country} | {city} | "
+            print(f"{GREEN}[\u2713] {proxy_url} | HTTP | {proxy_type} | {country} | {city} | "
                   f"ASN: {asn} | ISP: {org} | Hostname: {hostname} | "
                   f"Coordinates: {loc} | {elapsed}ms{RESET}")
             return proxy_url, True, proxy_type, country, elapsed
     except (requests.RequestException, KeyError, ValueError):
         pass
+    
+    if SOCKS5_AVAILABLE:
+        socks5_proxies = {
+            "http": f"socks5://{proxy_url}",
+            "https": f"socks5://{proxy_url}",
+        }
+        
+        try:
+            start = time.time()
+            response = requests.get(HTTPBIN_URL, proxies=socks5_proxies, timeout=DEFAULT_TIMEOUT)
+            elapsed = int((time.time() - start) * 1000)
+            
+            if response.status_code == 200:
+                ip = extract_ip(proxy_url)
+                proxy_type = classify_ip(ip)
+                info = get_ip_info(ip)
+                country = info.get("country", "Unknown")
+                city = info.get("city", "Unknown")
+                org = info.get("org", "Unknown")
+                hostname = info.get("hostname", "Unknown")
+                loc = info.get("loc", "Unknown")
+                asn = org.split()[0] if org != "Unknown" else "Unknown"
+                
+                print(f"{GREEN}[\u2713] {proxy_url} | SOCKS5 | {proxy_type} | {country} | {city} | "
+                      f"ASN: {asn} | ISP: {org} | Hostname: {hostname} | "
+                      f"Coordinates: {loc} | {elapsed}ms{RESET}")
+                return proxy_url, True, proxy_type, country, elapsed
+        except (requests.RequestException, KeyError, ValueError):
+            pass
     
     print(f"{RED}[\u00d7] {proxy_url}{RESET}")
     return proxy_url, False, None, None, None
@@ -260,6 +297,11 @@ def proxy_connector():
     proto = input("Protocol (http/socks5): ").strip().lower()
     if proto not in ["http", "socks5"]:
         print(f"{RED}Invalid protocol.{RESET}")
+        input("Press Enter to return to menu...")
+        return
+    
+    if proto == "socks5" and not SOCKS5_AVAILABLE:
+        print(f"{RED}SOCKS5 support not available. Please install PySocks: pip install PySocks{RESET}")
         input("Press Enter to return to menu...")
         return
     
